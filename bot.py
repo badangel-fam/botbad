@@ -36,6 +36,7 @@ async def on_ready():
         print(f"Synced {len(synced)} slash commands.")
     except Exception as e:
         print(f"Sync error: {e}")
+        
 
     bot.loop.create_task(maintain_voice_connection())
 
