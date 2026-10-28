@@ -6,7 +6,6 @@ import discord
 from discord.ext import commands
 from gtts import gTTS
 
-# --- ส่วนของ Web Server สำหรับให้ Watchdog (UptimeRobot) มา ping ไม่ให้ Render หลับ ---
 app = Flask('')
 
 @app.route('/')
@@ -19,7 +18,6 @@ def run_web():
 def keep_alive():
     t = threading.Thread(target=run_web)
     t.start()
-# -----------------------------------------------------------------------------------
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -118,6 +116,10 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 if __name__ == "__main__":
     keep_alive()
     if BOT_TOKEN:
+        # พักเวลาก่อนเริ่มรัน 15 วินาที เพื่อให้พ้นโทษ Rate Limit ของ Discord API
+        print("Waiting 15 seconds to avoid Discord Rate Limit...")
+        import time
+        time.sleep(15)
         bot.run(BOT_TOKEN)
     else:
         print("Error: BOT_TOKEN missing!")
