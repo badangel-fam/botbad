@@ -1,8 +1,25 @@
 import os
 import asyncio
+import threading
+from flask import Flask
 import discord
 from discord.ext import commands
 from gtts import gTTS
+
+# --- ส่วนของ Web Server สำหรับให้ Watchdog (UptimeRobot) มา ping ไม่ให้ Render หลับ ---
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "I am alive and running!"
+
+def run_web():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = threading.Thread(target=run_web)
+    t.start()
+# -----------------------------------------------------------------------------------
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -98,7 +115,9 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         except Exception as e:
             print(f"Notify Error: {e}")
 
-if BOT_TOKEN:
-    bot.run(BOT_TOKEN)
-else:
-    print("Error: BOT_TOKEN missing!")
+if __name__ == "__main__":
+    keep_alive()
+    if BOT_TOKEN:
+        bot.run(BOT_TOKEN)
+    else:
+        print("Error: BOT_TOKEN missing!")
