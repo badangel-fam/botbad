@@ -21,9 +21,10 @@ jobs:
     - name: Install FFmpeg and dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y ffmpeg libffi-dev libssl-dev
+        sudo apt-get install -y ffmpeg libffi-dev libssl-dev build-essential python3-dev
         pip install --upgrade pip
-        pip install discord.py gtts PyNaCl
+        pip install discord.py gtts
+        pip install --no-cache-dir --force-reinstall --no-binary :all: pynacl
 
     - name: Run Bot
       env:
