@@ -13,7 +13,7 @@ intents.presences = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ดึงค่าจาก Environment Variables ของ Render อย่างปลอดภัย
+# ดึงค่าจาก Environment Variables ของ Render
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 raw_channel_id = os.getenv("VOICE_CHANNEL_ID")
 
@@ -27,33 +27,43 @@ async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
     print('------')
     
+    # หน่วงเวลาก่อนซิงค์คำสั่ง เพื่อลดการสแปม API ป้องกัน 429
+    await asyncio.sleep(5)
+    
     try:
         synced = await bot.tree.sync()
         print(f"Synced {len(synced)} slash commands.")
     except Exception as e:
-        print(e)
+        print(f"Sync error: {e}")
 
-    if TARGET_VOICE_CHANNEL_ID:
-        bot.loop.create_task(maintain_voice_connection())
-    else:
-        print("Error: VOICE_CHANNEL_ID is missing or not a valid number!")
+    bot.loop.create_task(maintain_voice_connection())
 
 async def maintain_voice_connection():
     await bot.wait_until_ready()
+    # หน่วงเวลาก่อนต่อห้องเสียงครั้งแรก
+    await asyncio.sleep(10)
+    
     while not bot.is_closed():
         try:
             channel = bot.get_channel(TARGET_VOICE_CHANNEL_ID)
             if channel and isinstance(channel, discord.VoiceChannel):
-                if not channel.guild.voice_client or channel.guild.voice_client.channel != channel:
-                    if channel.guild.voice_client:
-                        await channel.guild.voice_client.disconnect(force=True)
+                voice_client = channel.guild.voice_client
+                
+                # เช็คว่าถ้าบอทไม่ได้อยู่ในห้อง หรือหลุดออกไปจากห้องที่กำหนด ให้ดึงกลับเข้ามาทันที
+                if not voice_client or not voice_client.is_connected() or voice_client.channel != channel:
+                    if voice_client:
+                        try:
+                            await voice_client.disconnect(force=True)
+                        except:
+                            pass
                     
                     await channel.connect(self_deaf=True)
-                    print(f"Connected to voice channel: {channel.name}")
+                    print(f"Auto-reconnected to voice channel: {channel.name}")
         except Exception as e:
             print(f"Voice connection error: {e}")
         
-        await asyncio.sleep(30)
+        # เช็คสถานะห้องทุกๆ 5 วินาที เพื่อให้มันรีบกลับเข้ามาทันทีถ้าหลุด
+        await asyncio.sleep(5)
 
 
 @bot.tree.command(name="say", description="พิมพ์ข้อความเพื่อให้บอทพูดออกมาเป็นเสียงในห้องแชท")
