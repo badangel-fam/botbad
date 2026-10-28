@@ -16,10 +16,14 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 raw_channel_id = os.getenv("VOICE_CHANNEL_ID")
 
+print(f"DEBUG: Raw VOICE_CHANNEL_ID from env -> '{raw_channel_id}'")
+
 try:
     TARGET_VOICE_CHANNEL_ID = int(raw_channel_id) if raw_channel_id else None
 except ValueError:
     TARGET_VOICE_CHANNEL_ID = None
+
+print(f"DEBUG: Converted TARGET_VOICE_CHANNEL_ID -> {TARGET_VOICE_CHANNEL_ID}")
 
 @bot.event
 async def on_ready():
@@ -39,9 +43,18 @@ async def maintain_voice_connection():
     await bot.wait_until_ready()
     await asyncio.sleep(10)
     
+    print(f"Target Voice Channel ID to search: {TARGET_VOICE_CHANNEL_ID}")
+    
     while not bot.is_closed():
         try:
+            if not TARGET_VOICE_CHANNEL_ID:
+                print("ERROR: TARGET_VOICE_CHANNEL_ID is missing or invalid!")
+                await asyncio.sleep(10)
+                continue
+
             channel = bot.get_channel(TARGET_VOICE_CHANNEL_ID)
+            print(f"Fetched channel object: {channel}")
+            
             if channel and isinstance(channel, discord.VoiceChannel):
                 voice_client = channel.guild.voice_client
                 
@@ -53,7 +66,9 @@ async def maintain_voice_connection():
                             pass
                     
                     await channel.connect(self_deaf=True)
-                    print(f"Auto-reconnected to voice channel: {channel.name}")
+                    print(f"Successfully connected to voice channel: {channel.name}")
+            else:
+                print(f"WARNING: Could not find voice channel with ID {TARGET_VOICE_CHANNEL_ID}. Make sure the bot is in the server and the ID is correct.")
         except Exception as e:
             print(f"Voice connection error: {e}")
         
