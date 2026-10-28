@@ -13,9 +13,14 @@ intents.presences = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ฝังค่า Token และ Voice Channel ID ลงไปตรงๆ เพื่อตัดปัญหาพัง
-BOT_TOKEN = "MTU2NDc3NDYwMjcwODc1MDMzNw.GWHcaS.7mY_HppmHhKGAb72zZJaQMfAXE7KnKUPj6ucBk"
-TARGET_VOICE_CHANNEL_ID = 1491016730842108055
+# ดึงค่าจาก Environment Variables ของ Render อย่างปลอดภัย
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+raw_channel_id = os.getenv("VOICE_CHANNEL_ID")
+
+try:
+    TARGET_VOICE_CHANNEL_ID = int(raw_channel_id) if raw_channel_id else None
+except ValueError:
+    TARGET_VOICE_CHANNEL_ID = None
 
 @bot.event
 async def on_ready():
@@ -28,7 +33,10 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-    bot.loop.create_task(maintain_voice_connection())
+    if TARGET_VOICE_CHANNEL_ID:
+        bot.loop.create_task(maintain_voice_connection())
+    else:
+        print("Error: VOICE_CHANNEL_ID is missing or not a valid number!")
 
 async def maintain_voice_connection():
     await bot.wait_until_ready()
@@ -115,4 +123,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         except Exception as e:
             print(f"Error in voice notification: {e}")
 
-bot.run(BOT_TOKEN)
+if BOT_TOKEN:
+    bot.run(BOT_TOKEN)
+else:
+    print("Error: BOT_TOKEN is missing in environment variables!")
