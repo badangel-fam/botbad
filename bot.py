@@ -28,42 +28,32 @@ print(f"DEBUG_START: Converted TARGET_VOICE_CHANNEL_ID = [{TARGET_VOICE_CHANNEL_
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
-    bot.loop.create_task(maintain_voice_connection())
+    bot.loop.create_task(connect_to_voice())
 
-async def maintain_voice_connection():
+async def connect_to_voice():
     await bot.wait_until_ready()
     await asyncio.sleep(5)
     
-    print(f"VA: Starting voice connection loop with ID: {TARGET_VOICE_CHANNEL_ID}")
+    print(f"VA: Attempting to connect to voice channel ID: {TARGET_VOICE_CHANNEL_ID}")
     
-    while not bot.is_closed():
-        try:
-            if not TARGET_VOICE_CHANNEL_ID:
-                print("VA_ERROR: TARGET_VOICE_CHANNEL_ID is None or invalid!")
-                await asyncio.sleep(10)
-                continue
+    try:
+        if not TARGET_VOICE_CHANNEL_ID:
+            print("VA_ERROR: TARGET_VOICE_CHANNEL_ID is None or invalid!")
+            return
 
-            channel = bot.get_channel(TARGET_VOICE_CHANNEL_ID)
-            print(f"VA: Fetched channel object -> {channel}")
-            
-            if channel and isinstance(channel, discord.VoiceChannel):
-                voice_client = channel.guild.voice_client
-                
-                if not voice_client or not voice_client.is_connected() or voice_client.channel != channel:
-                    if voice_client:
-                        try:
-                            await voice_client.disconnect(force=True)
-                        except:
-                            pass
-                    
-                    await channel.connect(self_deaf=True)
-                    print(f"VA: Successfully connected to voice channel: {channel.name}")
-            else:
-                print(f"VA_WARNING: Channel not found! Check if bot is in the server and ID is correct.")
-        except Exception as e:
-            print(f"VA_EXCEPTION: {e}")
+        channel = bot.get_channel(TARGET_VOICE_CHANNEL_ID)
+        print(f"VA: Fetched channel object -> {channel}")
         
-        await asyncio.sleep(5)
+        if channel and isinstance(channel, discord.VoiceChannel):
+            if channel.guild.voice_client:
+                await channel.guild.voice_client.disconnect(force=True)
+            
+            await channel.connect(self_deaf=True)
+            print(f"VA: Successfully connected to voice channel: {channel.name}")
+        else:
+            print(f"VA_WARNING: Channel not found or not a VoiceChannel!")
+    except Exception as e:
+        print(f"VA_EXCEPTION: {e}")
 
 @bot.tree.command(name="say", description="พิมพ์ข้อความเพื่อให้บอทพูด")
 async def say(interaction: discord.Interaction, text: str):
