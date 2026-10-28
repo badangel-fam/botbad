@@ -9,12 +9,13 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 intents.members = True
+intents.presences = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ดึงค่าจากระบบ Environment Variables ของเว็บโฮสต์ (ปลอดภัย ไม่ต้องใส่ Token ตรงๆ ในโค้ด)
-TARGET_VOICE_CHANNEL_ID = int(os.environ.get("VOICE_CHANNEL_ID", 123456789012345678))
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
+# ฝังค่า Token และ Voice Channel ID ลงไปตรงๆ เพื่อตัดปัญหาพัง
+BOT_TOKEN = "MTU2NDc3NDYwMjcwODc1MDMzNw.GWHcaS.7mY_HppmHhKGAb72zZJaQMfAXE7KnKUPj6ucBk"
+TARGET_VOICE_CHANNEL_ID = 1491016730842108055
 
 @bot.event
 async def on_ready():
