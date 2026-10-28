@@ -1,32 +1,33 @@
 name: Run Discord Bot
 
 on:
-  push:
   workflow_dispatch:
-  schedule:
-    - cron: '*/5 * * * *'
+  push:
+    branches: [ main ]
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
 
-      - name: Install FFmpeg and dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
-          pip install --no-cache-dir -r requirements.txt
+    - name: Install FFmpeg and dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+        pip install --upgrade pip
+        pip install discord.py gtts PyNaCl
 
-      - name: Run Bot
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          VOICE_CHANNEL_ID: ${{ secrets.VOICE_CHANNEL_ID }}
-        run: |
-          python bot.py
+    - name: Run Bot
+      env:
+        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        VOICE_CHANNEL_ID: ${{ secrets.VOICE_CHANNEL_ID }}
+      run: |
+        python bot.py
