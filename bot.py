@@ -5,7 +5,9 @@ from flask import Flask
 import discord
 from discord.ext import commands
 from gtts import gTTS
+import yt_dlp
 
+# --- ส่วนของ Web Server สำหรับ Watchdog (UptimeRobot) ---
 app = Flask('')
 
 @app.route('/')
@@ -18,6 +20,7 @@ def run_web():
 def keep_alive():
     t = threading.Thread(target=run_web)
     t.start()
+# --------------------------------------------------------
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -70,6 +73,7 @@ async def connect_to_voice():
     except Exception as e:
         print(f"VA_EXCEPTION: {e}")
 
+# --- คำสั่งเดิม: /say (TTS) ---
 @bot.tree.command(name="say", description="พิมพ์ข้อความเพื่อให้บอทพูด")
 async def say(interaction: discord.Interaction, text: str):
     voice_client = interaction.guild.voice_client
@@ -86,6 +90,46 @@ async def say(interaction: discord.Interaction, text: str):
         voice_client.play(discord.FFmpegPCMAudio(path))
     except Exception as e:
         print(f"TTS Error: {e}")
+
+# --- คำสั่งใหม่: /play เปิดเพลงจาก YouTube ---
+@bot.tree.command(name="play", description="เปิดเพลงจากลิงก์ YouTube")
+async def play(interaction: discord.Interaction, url: str):
+    voice_client = interaction.guild.voice_client
+    if not voice_client or not voice_client.is_connected():
+        await interaction.response.send_message("บอทไม่ได้อยู่ในห้องเสียง!", ephemeral=True)
+        return
+
+    await interaction.response.send_message(f"กำลังโหลดเพลงจากลิงก์...", ephemeral=True)
+
+    try:
+        # ตั้งค่า yt-dlp เพื่อดึงสตรีมเสียงตรงๆ แบบไม่เปลืองเนื้อที่ดิสก์
+        YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'}
+        
+        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+            info = ydl.extract_info(url, download=False)
+            url2 = info['url']
+            title = info.get('title', 'Unknown Title')
+
+        # ถ้าบอทกำลังเล่นอยูให้รอจนกว่าจะเล่นจบ
+        while voice_client.is_playing():
+            await asyncio.sleep(1)
+
+        # สตรีมเพลงเข้า Voice Channel ผ่าน FFmpeg
+        voice_client.play(discord.FFmpegPCMAudio(url2, options="-vn"))
+        await interaction.followup.send(f"🎶 กำลังเล่นเพลง: **{title}**", ephemeral=True)
+    except Exception as e:
+        print(f"Play Error: {e}")
+        await interaction.followup.send(f"เกิดข้อผิดพลาดในการเล่นเพลง: {e}", ephemeral=True)
+
+# --- คำสั่งใหม่: /stop หยุดเพลง ---
+@bot.tree.command(name="stop", description="หยุดเพลงและเคลียร์คิว")
+async def stop(interaction: discord.Interaction):
+    voice_client = interaction.guild.voice_client
+    if voice_client and voice_client.is_playing():
+        voice_client.stop()
+        await interaction.response.send_message("หยุดเพลงเรียบร้อย!", ephemeral=True)
+    else:
+        await interaction.response.send_message("ไม่มีเพลงกำลังเล่นอยู่", ephemeral=True)
 
 @bot.event
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
@@ -116,7 +160,6 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 if __name__ == "__main__":
     keep_alive()
     if BOT_TOKEN:
-        # พักเวลาก่อนเริ่มรัน 15 วินาที เพื่อให้พ้นโทษ Rate Limit ของ Discord API
         print("Waiting 15 seconds to avoid Discord Rate Limit...")
         import time
         time.sleep(15)
