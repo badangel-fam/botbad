@@ -4,7 +4,6 @@ import discord
 from discord.ext import commands
 from gtts import gTTS
 
-# ตั้งค่า Intents
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
@@ -13,7 +12,7 @@ intents.presences = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ดึงค่าจาก Environment Variables ของ Render
+# ดึงค่า Token และ Channel ID จาก Environment/Secrets
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 raw_channel_id = os.getenv("VOICE_CHANNEL_ID")
 
@@ -26,8 +25,6 @@ except ValueError:
 async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
     print('------')
-    
-    # หน่วงเวลาก่อนซิงค์คำสั่ง เพื่อลดการสแปม API ป้องกัน 429
     await asyncio.sleep(5)
     
     try:
@@ -40,7 +37,6 @@ async def on_ready():
 
 async def maintain_voice_connection():
     await bot.wait_until_ready()
-    # หน่วงเวลาก่อนต่อห้องเสียงครั้งแรก
     await asyncio.sleep(10)
     
     while not bot.is_closed():
@@ -49,7 +45,6 @@ async def maintain_voice_connection():
             if channel and isinstance(channel, discord.VoiceChannel):
                 voice_client = channel.guild.voice_client
                 
-                # เช็คว่าถ้าบอทไม่ได้อยู่ในห้อง หรือหลุดออกไปจากห้องที่กำหนด ให้ดึงกลับเข้ามาทันที
                 if not voice_client or not voice_client.is_connected() or voice_client.channel != channel:
                     if voice_client:
                         try:
@@ -62,11 +57,9 @@ async def maintain_voice_connection():
         except Exception as e:
             print(f"Voice connection error: {e}")
         
-        # เช็คสถานะห้องทุกๆ 5 วินาที เพื่อให้มันรีบกลับเข้ามาทันทีถ้าหลุด
         await asyncio.sleep(5)
 
-
-@bot.tree.command(name="say", description="พิมพ์ข้อความเพื่อให้บอทพูดออกมาเป็นเสียงในห้องแชท")
+@bot.tree.command(name="say", description="พิมพ์ข้อความเพื่อให้บอทพูดออกมาเป็นเสียง")
 async def say(interaction: discord.Interaction, text: str):
     voice_client = interaction.guild.voice_client
 
@@ -84,18 +77,15 @@ async def say(interaction: discord.Interaction, text: str):
         while voice_client.is_playing():
             await asyncio.sleep(1)
 
-        audio_source = discord.FFmpegPCMAudio(audio_file)
-        voice_client.play(audio_source)
+        voice_client.play(discord.FFmpegPCMAudio(audio_file))
 
         while voice_client.is_playing():
             await asyncio.sleep(1)
         
         if os.path.exists(audio_file):
             os.remove(audio_file)
-
     except Exception as e:
         print(f"Error generating/playing TTS: {e}")
-
 
 @bot.event
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
@@ -136,4 +126,4 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 if BOT_TOKEN:
     bot.run(BOT_TOKEN)
 else:
-    print("Error: BOT_TOKEN is missing in environment variables!")
+    print("Error: BOT_TOKEN is missing!")
